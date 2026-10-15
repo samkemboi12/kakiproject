@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Raw-material inventory</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #243244;
+      margin: 0;
+    }
+    main { max-width: 1100px; margin: auto; padding: 24px; }
+    section {
+      background: white;
+      padding: 24px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    form { display: grid; gap: 14px; max-width: 500px; }
+    label { display: grid; gap: 6px; }
+    input, select, textarea, button {
+      padding: 10px;
+      font: inherit;
+      border: 1px solid #ccd4df;
+      border-radius: 6px;
+    }
+    button { background: #2457a7; color: white; cursor: pointer; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5eaf0;
+    }
+    .flash { padding: 12px; margin: 12px 0; }
+    .success { background: #dcf4e4; }
+    .error { background: #fde2e2; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Raw-material inventory</h1>
+  <a href="{{ url_for('setup.index') }}">Master data setup</a>
+
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ category }}" role="status">{{ message }}</div>
+  {% endfor %}
+
+  <section>
+    <h2>Current stock</h2>
+    <table>
+      <thead><tr><th>Material</th><th>Available kg</th></tr></thead>
+      <tbody>
+      {% for row in stock_rows %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td>{{ '{:,.3f}'.format(row.balance_kg) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Record material receipt</h2>
+    <p>Use one receipt per roll or lot. Purchase cost is the total cost.</p>
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_value }}">
+
+      <label>Material
+        <select name="material_id" required>
+          <option value="">Choose material</option>
+          {% for material in material_options %}
+            <option value="{{ material.id }}"
+              {{ 'selected' if form_values.get('material_id') == material.id|string }}>
+              {{ material.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>Internal roll / lot number
+        <input name="lot_number" maxlength="80" required
+               value="{{ form_values.get('lot_number', '') }}">
+      </label>
+
+      <label>Supplier
+        <input name="supplier_name" maxlength="120" required
+               value="{{ form_values.get('supplier_name', '') }}">
+      </label>
+
+      <label>Received on
+        <input type="date" name="received_on" max="{{ today }}" required
+               value="{{ form_values.get('received_on', today) }}">
+      </label>
+
+      <label>Weight received (kg)
+        <input type="number" name="weight_kg" min="0.001" step="0.001"
+               max="99999999999.999" required
+               value="{{ form_values.get('weight_kg', '') }}">
+      </label>
+
+      <label>Total purchase cost
+        <input type="number" name="purchase_cost" min="0" step="0.01"
+               max="999999999999.99" required
+               value="{{ form_values.get('purchase_cost', '') }}">
+      </label>
+
+      <label>Notes
+        <textarea name="notes">{{ form_values.get('notes', '') }}</textarea>
+      </label>
+
+      <button type="submit">Record receipt</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Rolls and lots</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Lot number</th><th>Material</th>
+            <th>Supplier</th><th>Received kg</th>
+            <th>Available kg</th><th>Purchase cost</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for lot, material_name, balance in lot_rows %}
+          <tr>
+            <td>{{ lot.received_on }}</td>
+            <td>{{ lot.lot_number }}</td>
+            <td>{{ material_name }}</td>
+            <td>{{ lot.supplier_name }}</td>
+            <td>{{ '{:,.3f}'.format(lot.received_weight_kg) }}</td>
+            <td>{{ '{:,.3f}'.format(balance) }}</td>
+            <td>{{ '{:,.2f}'.format(lot.purchase_cost) }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">No material receipts yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</body>
+</html>
